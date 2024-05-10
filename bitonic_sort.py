@@ -1,3 +1,4 @@
+import math
 from mpi4py import MPI
 import numpy as np
 import random
@@ -9,49 +10,38 @@ def generate_data_set(size):
     return np.random.permutation(size)
 
 def bitonic_sort(data, comm, rank, size):
-    # comm = MPI.COMM_WORLD
-    # rank = comm.Get_rank()
-    # size = comm.Get_size()
 
-    local_n = len(data)
-
-    total_n = LIST_SIZE
+    total_n = len(data)*size
     local_data = data
-    for k in range(2, total_n, 2):
-        for j in range(k//2, 0, -1):
-            # for i in range(0, total_n, k):
-                # if (i // k) % 2 == 0:
-                #     direction = 1
-                # else:
-                #     direction = 0
+    k = 1
+    while 2**k < size + 1:
+        j = 2**k // 2
+        while j > 0:
 
-                partner = rank ^ j
+            partner = rank ^ j
                 
-                comm.send(local_data, dest=partner)
-                recv_data = comm.recv(source=partner)
+            # wymiana danych z partnerem
+            comm.send(local_data, dest=partner)
+            recv_data = comm.recv(source=partner)
                 
-                # tmp = local_data + recv_data
-                # tmp.sort(reverse=(rank // k) % 2 != 0)
-                # half = len(tmp) // 2
-                # local_data = tmp[:half] if rank < partner else tmp[half:]
 
-                tmp = np.concatenate((local_data, recv_data))
-                if (rank // k) % 2 == 0:
-                    # Sortowanie rosnąco
-                    tmp.sort()
-                else:
-                    # Sortowanie malejąco
-                    tmp = np.sort(tmp)[::-1] 
-                half = len(tmp) // 2
-                if rank < partner:
+            tmp = np.concatenate((local_data, recv_data))
+            if (rank // 2**k) % 2 == 0:
+                # Sortowanie rosnąco
+                tmp.sort()
+            else:
+                # Sortowanie malejąco
+                tmp = np.sort(tmp)[::-1] 
+            half = len(tmp) // 2
+            if rank < partner:
                     local_data = tmp[:half]
-                else:
-                    local_data = tmp[half:]
+            else:
+                local_data = tmp[half:]
 
-                # if rank == 0:
-                    print("rank: ", rank, "|k: ", k, "|j: ", j, "|local_data: ", local_data, "|partner: ", partner)
+            print("rank: ", rank, "|k: ", 2**k, "|j: ", j, "|local_data: ", local_data, "|partner: ", partner)
+            j //= 2
 
-                # data[i:i+j*2] = merged_data
+        k += 1
     return local_data
 
 
