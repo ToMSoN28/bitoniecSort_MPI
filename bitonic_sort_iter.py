@@ -73,10 +73,10 @@ def bi_sort(arr):
 
 def main(file_path):
     data = read_numbers_from_file(file_path)
-    # print(data)
-    # data = adjust_list_to_power_of_two(data)
+    print(data)
+    data = adjust_list_to_power_of_two(data)
     result = bi_sort(data)
-    # result = remove_leading_minus_ones(result)
+    result = remove_leading_minus_ones(result)
     print("Posortowane dane:", result)
     # override_file_with_sort_list(file_path, result)
 

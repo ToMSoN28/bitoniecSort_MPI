@@ -1,4 +1,3 @@
-# Definicja komend do wykonania
 $commands = @(
     "python .\bitonic_sort_iter.py tmp",
     "python .\bitonic_sort_reku.py tmp",
@@ -10,11 +9,9 @@ $commands = @(
     "mpiexec -n 8 python .\bitonic_sort_MPI.py tmp reku"
 )
 
-# Tablica do przechowywania wyników
 $results = @()
 
 foreach ($command in $commands) {
-    # Mierzenie czasu wykonania komendy
     $executionTime = [System.Diagnostics.Stopwatch]::StartNew()
     try {
         Invoke-Expression $command
@@ -23,12 +20,10 @@ foreach ($command in $commands) {
     }
     $executionTime.Stop()
 
-    # Zapisanie wyniku
     $results += [pscustomobject]@{
         Command = $command
         TimeInMilliseconds = $executionTime.Elapsed.TotalMilliseconds
     }
 }
 
-# Wyświetlenie wyników
 $results | Format-Table -AutoSize
