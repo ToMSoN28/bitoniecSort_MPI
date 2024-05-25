@@ -11,22 +11,20 @@ def read_numbers_from_file(filename):
 
 def adjust_list_to_power_of_two(numbers):
     length = len(numbers)
-    if (length & (length - 1)) == 0:  # Sprawdza, czy liczba jest potęgą dwójki
+    if (length & (length - 1)) == 0:
         return numbers
     else:
         next_power_of_two = 2 ** math.ceil(math.log2(length))
         additional_zeros = next_power_of_two - length
-        numbers.extend([-1] * additional_zeros)  # Wstawia -1 żeby uzupełnić
+        numbers.extend([-1] * additional_zeros)
     return numbers
 
 def remove_leading_minus_ones(numbers):
-    # Znajdź indeks pierwszego elementu, który nie jest -1
     first_non_minus_one_index = 0
     for number in numbers:
         if number != -1:
             break
         first_non_minus_one_index += 1
-    # Przycięcie listy, usuwając wszystkie początkowe wartości -1
     return numbers[first_non_minus_one_index:]
 
 def override_file_with_sort_list(filename, result):
@@ -49,8 +47,8 @@ def bitonic_merge_reku(arr, low, cnt, direction):
 def bitonic_sort_reku(arr, low, cnt, direction):
     if cnt > 1:
         k = cnt // 2
-        bitonic_sort_reku(arr, low, k, True)  # Sort in ascending order
-        bitonic_sort_reku(arr, low + k, k, False)  # Sort in descending order
+        bitonic_sort_reku(arr, low, k, True)
+        bitonic_sort_reku(arr, low + k, k, False)
         bitonic_merge_reku(arr, low, cnt, direction)
         
 def merge_up_iter(arr, start, end):
@@ -87,10 +85,8 @@ def bitonic_sort_iter(arr):
 
 def type_sort(arr, type):
     if type == "iter":
-        # use iter b_sort
         bitonic_sort_iter(arr)
     else:    
-        # use reku b_sort
         bitonic_sort_reku(arr, 0, len(arr), True)
     
     
@@ -111,12 +107,9 @@ def bitonic_sort(data, comm, rank, size, type):
     type_sort(data, type)
     if not direction:
         data.reverse()
-    if rank == 0:
-        print(rank, data, len(data))
     n = 0
     while 2**n < size:    
-    # for n in range(1,size): #TUTAJ zmodyfikowac na procesy
-        partner = rank^(2**n)    # zweryfikować partnerów bo coś nie tak działa
+        partner = rank^(2**n)
         if rank > partner:
             comm.send(data, dest=partner)
         else:
@@ -124,7 +117,6 @@ def bitonic_sort(data, comm, rank, size, type):
             data = np.concatenate((data, recv_data))
         
             merge_directition = (rank/(2**(n+1)))%2 == 0
-            print(rank, partner, len(data))
             merge(data, merge_directition, type)
         n += 1
     return data
@@ -138,7 +130,6 @@ def main(file_path, alg):
         data_to_split = []
         data = read_numbers_from_file(file_path)
         data = adjust_list_to_power_of_two(data)
-        print(len(data))
         for i in range(size):
             tmp = []
             for j in range (int(len(data)/size)):
@@ -151,7 +142,7 @@ def main(file_path, alg):
     if alg not in ('iter', 'reku'):    
         result = bitonic_sort(local_data, comm, rank, size, "iter")
     else:
-        result = bitonic_sort(local_data, comm, rank, size, "iter")
+        result = bitonic_sort(local_data, comm, rank, size, alg)
 
     if rank == 0:
         if alg not in ('iter', 'reku'):

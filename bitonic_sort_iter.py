@@ -12,22 +12,20 @@ def read_numbers_from_file(filename):
 
 def adjust_list_to_power_of_two(numbers):
     length = len(numbers)
-    if (length & (length - 1)) == 0:  # Sprawdza, czy liczba jest potęgą dwójki
+    if (length & (length - 1)) == 0:
         return numbers
     else:
         next_power_of_two = 2 ** math.ceil(math.log2(length))
         additional_zeros = next_power_of_two - length
-        numbers.extend([-1] * additional_zeros)  # Wstawia -1 żeby uzupełnić
+        numbers.extend([-1] * additional_zeros)
     return numbers
 
 def remove_leading_minus_ones(numbers):
-    # Znajdź indeks pierwszego elementu, który nie jest -1
     first_non_minus_one_index = 0
     for number in numbers:
         if number != -1:
             break
         first_non_minus_one_index += 1
-    # Przycięcie listy, usuwając wszystkie początkowe wartości -1
     return numbers[first_non_minus_one_index:]
 
 def override_file_with_sort_list(filename, result):
@@ -75,12 +73,12 @@ def bi_sort(arr):
 
 def main(file_path):
     data = read_numbers_from_file(file_path)
-    print(data)
-    data = adjust_list_to_power_of_two(data)
+    # print(data)
+    # data = adjust_list_to_power_of_two(data)
     result = bi_sort(data)
-    result = remove_leading_minus_ones(result)
+    # result = remove_leading_minus_ones(result)
     print("Posortowane dane:", result)
-    override_file_with_sort_list(file_path, result)
+    # override_file_with_sort_list(file_path, result)
 
 if __name__ == "__main__":
     main(sys.argv[1])
