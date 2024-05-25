@@ -58,7 +58,7 @@ def merge_down(arr, start, end):
 
 
 
-def bitonic_sort(arr):
+def bi_sort(arr):
     n = len(arr)
     s = 2
     while s <= n:
@@ -77,7 +77,7 @@ def main(file_path):
     data = read_numbers_from_file(file_path)
     print(data)
     data = adjust_list_to_power_of_two(data)
-    result = bitonic_sort(data)
+    result = bi_sort(data)
     result = remove_leading_minus_ones(result)
     print("Posortowane dane:", result)
     override_file_with_sort_list(file_path, result)

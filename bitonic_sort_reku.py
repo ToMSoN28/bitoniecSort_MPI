@@ -38,17 +38,6 @@ def override_file_with_sort_list(filename, result):
     except ValueError:
         print("ValueError")
         
-def custom_sort(array, ascending=True):
-    sorted_array = []
-    array = array.tolist()
-    while len(array)>0:
-        if ascending:
-            value = min(array)
-        else:
-            value = max(array)
-        sorted_array.append(value)
-        array.remove(value)
-    return sorted_array
 
 def bitonic_merge(arr, low, cnt, direction):
     if cnt > 1:
@@ -67,14 +56,15 @@ def bitonic_sort(arr, low, cnt, direction):
         bitonic_merge(arr, low, cnt, direction)
 
 def b_sort(arr, ascending=True):
-    bitonic_sort(arr, 0, len(arr), ascending)
+    arr = bitonic_sort(arr, 0, len(arr), ascending)
+    return arr
 
 def main(file_path):
     data = read_numbers_from_file(file_path)
     print(data)
     data = adjust_list_to_power_of_two(data)
-    b_sort(data)
-    result = remove_leading_minus_ones(data)
+    result = b_sort(data)
+    result = remove_leading_minus_ones(result)
     print("Posortowane dane:", result)
     override_file_with_sort_list(file_path, result)
 

@@ -2,13 +2,7 @@ import math
 import sys
 from mpi4py import MPI
 import numpy as np
-import random
-import time
 
-LIST_SIZE = 16
-
-def generate_data_set(size):
-    return np.random.permutation(size)
 
 def read_numbers_from_file(filename):
     with open(filename, 'r') as file:
@@ -43,51 +37,99 @@ def override_file_with_sort_list(filename, result):
     except ValueError:
         print("ValueError")
         
-def custom_sort(array, ascending=True):
-    sorted_array = []
-    array = array.tolist()
-    while len(array)>0:
-        if ascending:
-            value = min(array)
+def bitonic_merge_reku(arr, low, cnt, direction):
+    if cnt > 1:
+        k = cnt // 2
+        for i in range(low, low + k):
+            if direction == (arr[i] > arr[i + k]):
+                arr[i], arr[i + k] = arr[i + k], arr[i]
+        bitonic_merge_reku(arr, low, k, direction)
+        bitonic_merge_reku(arr, low + k, k, direction)
+
+def bitonic_sort_reku(arr, low, cnt, direction):
+    if cnt > 1:
+        k = cnt // 2
+        bitonic_sort_reku(arr, low, k, True)  # Sort in ascending order
+        bitonic_sort_reku(arr, low + k, k, False)  # Sort in descending order
+        bitonic_merge_reku(arr, low, cnt, direction)
+        
+def merge_up_iter(arr, start, end):
+    step = (end - start) // 2
+    while step > 0:
+        for i in range(start, end, step * 2):
+            for j in range(i, i + step):
+                if arr[j] > arr[j + step]:
+                    arr[j], arr[j + step] = arr[j + step], arr[j]
+        step //= 2
+
+def merge_down_iter(arr, start, end):
+    step = (end - start) // 2
+    while step > 0:
+        for i in range(start, end, step * 2):
+            for j in range(i, i + step):
+                if arr[j] < arr[j + step]:
+                    arr[j], arr[j + step] = arr[j + step], arr[j]
+        step //= 2
+
+def bitonic_sort_iter(arr):
+    n = len(arr)
+    s = 2
+    while s <= n:
+        i = 0
+        while i < n:
+            if i + s <= n:
+                merge_up_iter(arr, i, i + s)
+            if i + 2 * s <= n:
+                merge_down_iter(arr, i + s, i + 2 * s)
+            i += s * 2
+        s *= 2
+    return arr
+
+def type_sort(arr, type):
+    if type == "iter":
+        # use iter b_sort
+        bitonic_sort_iter(arr)
+    else:    
+        # use reku b_sort
+        bitonic_sort_reku(arr, 0, len(arr), True)
+    
+    
+def merge(arr, direction_up, type):
+    if direction_up:
+        if type == "iter":
+            merge_up_iter(arr, 0, len(arr))
         else:
-            value = max(array)
-        sorted_array.append(value)
-        array.remove(value)
-    return sorted_array
+            bitonic_merge_reku(arr, 0, len(arr), direction_up)
+    else:
+        if type == "iter":
+            merge_down_iter(arr, 0, len(arr))
+        else:
+            bitonic_merge_reku(arr, 0, len(arr), direction_up)
 
-def bitonic_sort(data, comm, rank, size):
-
-    total_n = len(data)*size
-    local_data = data
-    k = 1
-    while 2**k < size + 1:
-        j = 2**k // 2
-        while j > 0:
-
-            partner = rank ^ j
-                
-            # wymiana danych z partnerem
-            comm.send(local_data, dest=partner)
+def bitonic_sort(data, comm, rank, size, type):
+    direction = rank%2 == 0
+    type_sort(data, type)
+    if not direction:
+        data.reverse()
+    if rank == 0:
+        print(rank, data, len(data))
+    n = 0
+    while 2**n < size:    
+    # for n in range(1,size): #TUTAJ zmodyfikowac na procesy
+        partner = rank^(2**n)    # zweryfikować partnerów bo coś nie tak działa
+        if rank > partner:
+            comm.send(data, dest=partner)
+        else:
             recv_data = comm.recv(source=partner)
-                
-
-            tmp = np.concatenate((local_data, recv_data))
-            tmp = custom_sort(tmp, (rank // 2**k) % 2 == 0)
-            half = len(tmp) // 2
-            if rank < partner:
-                    local_data = tmp[:half]
-            else:
-                local_data = tmp[half:]
-
-            # print("rank: ", rank, "|k: ", 2**k, "|j: ", j, "|local_data: ", local_data, "|partner: ", partner)
-            j //= 2
-
-        k += 1
-    return local_data
-
-
-
-def main(file_path):
+            data = np.concatenate((data, recv_data))
+        
+            merge_directition = (rank/(2**(n+1)))%2 == 0
+            print(rank, partner, len(data))
+            merge(data, merge_directition, type)
+        n += 1
+    return data
+            
+def main(file_path, alg):
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -95,29 +137,29 @@ def main(file_path):
     if rank == 0:
         data_to_split = []
         data = read_numbers_from_file(file_path)
-        print(data)
         data = adjust_list_to_power_of_two(data)
-        
+        print(len(data))
         for i in range(size):
             tmp = []
             for j in range (int(len(data)/size)):
                 tmp.append(data[i*(len(data)//size)+j])
             data_to_split.append(tmp)
-        # print(data_to_split)
     else:
         data_to_split = None
 
     local_data = comm.scatter(data_to_split, root=0)
-    # print(rank, local_data)
-    local_data = bitonic_sort(local_data, comm, rank, size)
-    sorted_data = comm.gather(local_data, root=0)
+    if alg not in ('iter', 'reku'):    
+        result = bitonic_sort(local_data, comm, rank, size, "iter")
+    else:
+        result = bitonic_sort(local_data, comm, rank, size, "iter")
 
     if rank == 0:
-        # Wypłaszczanie i czyszczenie wyniku z None (dodanych wcześniej)
-        result = [x for sublist in sorted_data for x in sublist if x is not None]
+        if alg not in ('iter', 'reku'):
+            print('Implemnetacja iteracyjna w wątkach')
         result = remove_leading_minus_ones(result)
         print("Posortowane dane:", result)
-        override_file_with_sort_list(file_path, result)
+    #     override_file_with_sort_list(file_path, result)
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+
+    main(sys.argv[1], sys.argv[2])
